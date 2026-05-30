@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcade Neon & Multiplayer</title>
+  <style>
+    body {
+      background-color: #1a1a1a;
+      background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 0);
+      background-size: 40px 40px;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      transition: background 0.3s ease;
+    }
+
+    .jogo-container { position: relative; width: 100vw; height: 100vh; }
+    #interface-topo { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; }
+    #placar, #banco, #modo-atual { color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+    #mensagem { position: absolute; top: 70px; left: 20px; color: #ccc; font-size: 18px; z-index: 10; }
+
+    /* ==========================================
+       ESTILOS DE WALLPAPERS (CENÁRIOS)
+       ========================================== */
+    body.fundo-caderno, .preview-fundo-caderno { 
+      background-color: #f4f1ea !important;
+      background-image: 
+        linear-gradient(90deg, transparent 79px, #abcedf 79px, #abcedf 81px, transparent 81px),
+        linear-gradient(#eee 1px, transparent 0) !important;
+      background-size: 100% 100%, 100% 30px !important;
+    }
+    body.fundo-ceu, .preview-fundo-ceu {
+      background: linear-gradient(180deg, #74b9ff 0%, #a29bfe 100%) !important;
+      background-image: radial-gradient(#fff 2px, transparent 0) !important;
+      background-size: 80px 80px !important;
+    }
+    body.fundo-caderno #placar, body.fundo-caderno #banco, body.fundo-caderno #modo-atual { color: #333 !important; text-shadow: none !important; }
+
+    /* SKINS DAS CAIXAS */
+    .caixa { width: 40px; height: 40px; position: absolute; border-radius: 4px; }
+    .caixa-padrão { background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+    .caixa-neon-verde { background-color: #39ff14; box-shadow: 0 0 15px #39ff14; }
+    .caixa-neon-laranja { background-color: #ffaa00; box-shadow: 0 0 15px #ffaa00; }
+    .caixa-neon-fogo { background-color: #ff0055; box-shadow: 0 0 25px #ff0055; }
+    .caixa-cyber { background-color: #9b59b6; border: 2px solid #00ffff; }
+    .caixa-ouro { background: linear-gradient(45deg, #ffd700, #ffa500); }
+    .caixa-gelo { background-color: #74b9ff; box-shadow: 0 0 12px #74b9ff; }
+    .caixa-sombra { background-color: #2d3436; border: 1px solid #000; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+    .caixa-rabisco { background-color: #555; border: 3px dashed #000; border-radius: 50%; }
+    .caixa-pascoa { background-color: #ffb7b2; border: 2px dotted #fff; border-radius: 40% 40% 50% 50%; }
+    .caixa-natal { background-color: #e63946; border: 2px solid #a8dadc; box-shadow: 0 0 15px #e63946; }
+    .caixa-winter { background-color: #e0f7fa; border: 1px solid #00e5ff; }
+    .caixa-summer { background-color: #ffb703; box-shadow: 0 0 25px #fb8500; }
+
+    /* SKINS DAS BARRAS */
+    #plataforma { width: 160px; height: 20px; position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); border-radius: 4px; }
+    .barra-padrão { background-color: #2ecc71; box-shadow: 0 0 15px rgba(46,204,113,0.5); }
+    .barra-neon-azul { background-color: #00f0ff; box-shadow: 0 0 20px #00f0ff; border: 1px solid #fff; }
+    .barra-neon-rosa { background-color: #ff007f; box-shadow: 0 0 20px #ff007f; border: 1px solid #fff; }
+    .barra-neon-roxo { background-color: #b026ff; box-shadow: 0 0 25px #b026ff; }
+    .barra-ferro { background-color: #7f8c8d; border: 2px solid #333; }
+    .barra-ouro { background: linear-gradient(90deg, #ffd700, #ffa500); box-shadow: 0 0 15px #ffd700; }
+    .barra-madeira { background-color: #8b5a2b; border-bottom: 4px solid #5c3a1a; }
+    .barra-laser { background-color: #ff3838; box-shadow: 0 0 30px #ff3838; }
+    .barra-regua { background-color: #fff; border: 1px solid #999; }
+
+    #chao { width: 100%; height: 15px; background-color: #e74c3c; position: absolute; bottom: 0; box-shadow: 0 0 15px #e74c3c; }
+
+    /* TELA DA LOJA */
+    #tela-loja {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background-color: rgba(10, 10, 10, 0.98); border: 2px solid #333; border-radius: 12px;
+      padding: 15px; width: 94%; max-width: 1080px; text-align: center; color: white; z-index: 100;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    }
+    .loja-layout-container { display: flex; gap: 15px; margin: 10px 0; }
+    .secoes-loja { display: flex; justify-content: space-between; width: 70%; height: 360px; }
+    .coluna-loja { display: flex; flex-direction: column; width: 32%; gap: 5px; overflow-y: auto; padding-right: 3px; }
+    .coluna-loja::-webkit-scrollbar { width: 4px; }
+    .coluna-loja::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+    .coluna-loja h3 { border-bottom: 2px solid #222; padding-bottom: 4px; margin: 10px 0 5px 0; font-size: 14px; color: #00ffff; }
+
+    .coluna-loja button, .btn-modo {
+      background-color: #1c222b; color: white; border: 1px solid #2c3e50; padding: 8px;
+      border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; text-align: left; transition: 0.2s;
+    }
+    .coluna-loja button:hover, .btn-modo:hover { background-color: #2c3e50; border-color: #00ffff; }
+    .coluna-loja button.equipado { border-color: #00ffff; color: #00ffff; background-color: #0b1a29; }
+    .coluna-loja button.comprado { border-color: #2ecc71; }
+    .coluna-loja button.bloqueado { border-color: #c0392b !important; background-color: #2c1212 !important; color: #e74c3c !important; cursor: not-allowed; }
+
+    .paineis-direita { width: 30%; display: flex; flex-direction: column; gap: 8px; }
+    #painel-preview, #painel-multiplayer {
+      background-color: #111; border: 1px solid #333; border-radius: 8px; padding: 10px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #painel-preview h4, #painel-multiplayer h4 { margin: 0 0 6px 0; font-size: 12px; color: #ffaa00; letter-spacing: 1px; }
+
+    #caixa-preview-fundo { width: 100%; height: 110px; border-radius: 6px; position: relative; overflow: hidden; display: flex; justify-content: center; border: 1px solid #333; transition: all 0.3s; background-color: #1a1a1a; }
+    #caixa-preview-item { width: 25px; height: 25px; position: absolute; top: 15px; border-radius: 4px; }
+    #barra-preview-item { width: 90px; height: 12px; position: absolute; bottom: 20px; border-radius: 3px; }
+
+    #painel-multiplayer button { background-color: #e67e22; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    #painel-multiplayer input { width: 120px; padding: 5px; border-radius: 4px; border: 1px solid #444; background: #222; color: white; text-align: center; font-size: 12px; }
+    #codigo-gerado { margin-top: 3px; font-size: 13px; color: #2ecc71; }
+
+    #moedas-loja { font-size: 18px; margin-bottom: 5px; font-weight: bold; color: #f1c40f; }
+    #btn-recomecar { background-color: #27ae60; color: white; border: none; padding: 10px 40px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+    .oculto { display: none !important; }
+  </style>
+</head>
+<body>
+
+
+<div class="jogo-container">
+  <div id="interface-topo">
+    <div id="placar">Nível: 1</div>
+    <div id="modo-atual">Modo: PADRÃO</div>
+    <div id="banco">Moedas: 0 🪙</div>
+  </div>
+  
+  <div id="plataforma" class="barra-padrão"></div>
+  <div id="chao"></div>
+  <div id="mensagem">Use as SETAS (◄ ►) para jogar!</div>
+
+  <!-- TELA DE FIM DE JOGO & MENUS -->
+  <div id="tela-loja" class="oculto">
+    <h2>🎮 MENU DO ARCADE 🎮</h2>
+    <p id="msg-loja">Você perdeu!</p>
+    <div id="moedas-loja">Suas Moedas: <span id="saldo-loja">0</span> 🪙</div>
+    
+    <div class="loja-layout-container">
+      
+      <!-- SEÇÕES DA LOJA -->
+      <div class="secoes-loja">
+        <!-- COLUNA 1: BARRAS -->
+        <div class="coluna-loja">
+          <h3>Skins (Barras)</h3>
+          <button id="btn-barra-padrão" onmouseenter="mostrarPreview('barra', 'padrão')" onclick="comprarSkin('barra', 'padrão', 0)">Verde Clássico (Grátis)</button>
+          <button id="btn-barra-neon-azul" onmouseenter="mostrarPreview('barra', 'neon-azul')" onclick="comprarSkin('barra', 'neon-azul', 10)">Neon Ciano (10 🪙)</button>
+          <button id="btn-barra-neon-rosa" onmouseenter="mostrarPreview('barra', 'neon-rosa')" onclick="comprarSkin('barra', 'neon-rosa', 20)">Neon Choque (20 🪙)</button>
+          <button id="btn-barra-neon-roxo" onmouseenter="mostrarPreview('barra', 'neon-roxo')" onclick="comprarSkin('barra', 'neon-roxo', 30)">Neon Roxo (30 🪙)</button>
+          <button id="btn-barra-ferro" onmouseenter="mostrarPreview('barra', 'ferro')" onclick="comprarSkin('barra', 'ferro', 40)">Barra de Ferro (40 🪙)</button>
+          <button id="btn-barra-ouro" onmouseenter="mostrarPreview('barra', 'ouro')" onclick="comprarSkin('barra', 'ouro', 50)">Ouro Maciço (50 🪙)</button>
+          <button id="btn-barra-madeira" onmouseenter="mostrarPreview('barra', 'madeira')" onclick="comprarSkin('barra', 'madeira', 60)">Tábua Madeira (60 🪙)</button>
+          <button id="btn-barra-laser" onmouseenter="mostrarPreview('barra', 'laser')" onclick="comprarSkin('barra', 'laser', 70)">Laser Fatal (70 🪙)</button>
+          <button id="btn-barra-regua" onmouseenter="mostrarPreview('barra', 'regua')" onclick="comprarSkin('barra', 'regua', 80)">Régua Escolar (80 🪙)</button>
+        </div>
+
+        <!-- COLUNA 2: CAIXAS -->
+        <div class="coluna-loja">
+          <h3>Skins (Caixas)</h3>
+          <button id="btn-caixa-padrão" onmouseenter="mostrarPreview('caixa', 'padrão')" onclick="comprarSkin('caixa', 'padrão', 0)">Branco Absoluto (Grátis)</button>
+          <button id="btn-caixa-neon-verde" onmouseenter="mostrarPreview('caixa', 'neon-verde')" onclick="comprarSkin('caixa', 'neon-verde', 5)">Verde Matrix (5 🪙)</button>
+          <button id="btn-caixa-neon-laranja" onmouseenter="mostrarPreview('caixa', 'neon-laranja')" onclick="comprarSkin('caixa', 'neon-laranja', 10)">Laranja Laser (10 🪙)</button>
+          <button id="btn-caixa-neon-fogo" onmouseenter="mostrarPreview('caixa', 'neon-fogo')" onclick="comprarSkin('caixa', 'neon-fogo', 15)">Fogo Vivo (15 🪙)</button>
+          <button id="btn-caixa-cyber" onmouseenter="mostrarPreview('caixa', 'cyber')" onclick="comprarSkin('caixa', 'cyber', 20)">Bloco Cyber (20 🪙)</button>
+          <button id="btn-caixa-ouro" onmouseenter="mostrarPreview('caixa', 'ouro')" onclick="comprarSkin('caixa', 'ouro', 25)">Cubo de Ouro (25 🪙)</button>
+          <button id="btn-caixa-gelo" onmouseenter="mostrarPreview('caixa', 'gelo')" onclick="comprarSkin('caixa', 'gelo', 30)">Gelo Raspado (30 🪙)</button>
+          <button id="btn-caixa-sombra" onmouseenter="mostrarPreview('caixa', 'sombra')" onclick="comprarSkin('caixa', 'sombra', 35)">Matéria Escura (35 🪙)</button>
+          <button id="btn-caixa-rabisco" onmouseenter="mostrarPreview('caixa', 'rabisco')" onclick="comprarSkin('caixa', 'rabisco', 40)">Rabisco Giz (40 🪙)</button>
+
+          <h3 style="color: #ff3366;">⏰ Caixa Evento Limitado</h3>
+          <button id="btn-caixa-pascoa" onmouseenter="mostrarPreview('caixa', 'pascoa')" onclick="comprarSkinLimitada('caixa', 'pascoa', 80, 'pascoa')">Ovo Coelho (80 🪙)</button>
+          <button id="btn-caixa-natal" onmouseenter="mostrarPreview('caixa', 'natal')" onclick="comprarSkinLimitada('caixa', 'natal', 65, 'natal')">Natal Box (65 🪙)</button>
+          <button id="btn-caixa-winter" onmouseenter="mostrarPreview('caixa', 'winter')" onclick="comprarSkinLimitada('caixa', 'winter', 55, 'winter')">Winter Box (55 🪙)</button>
+          <button id="btn-caixa-summer" onmouseenter="mostrarPreview('caixa', 'summer')" onclick="comprarSkinLimitada('caixa', 'summer', 115, 'summer')">Summer Box (115 🪙)</button>
+        </div>
+
+        <!-- COLUNA 3: MODOS E FUNDOS -->
+        <div class="coluna-loja">
+          <h3>Modos de Jogo</h3>
+          <button onclick="mudarModo('padrao')" class="btn-modo">Modo Padrão (Salvar)</button>
+          <button onclick="mudarModo('caixa')" class="btn-modo">Modo Caixa (Controlar Qdr)</button>
+          
+          <h3>Cenários (Fundo)</h3>
+          <button id="btn-fundo-padrão" onmouseenter="mostrarPreview('fundo', 'padrão')" onclick="comprarSkin('fundo', 'padrão', 0)">Fundo Retro ✨ (Grátis)</button>
+          <button id="btn-fundo-caderno" onmouseenter="mostrarPreview('fundo', 'caderno')" onclick="comprarSkin('fundo', 'caderno', 1500)">Caderno Amassado 📝 (1500 🪙)</button>
+          <button id="btn-fundo-ceu" onmouseenter="mostrarPreview('fundo', 'ceu')" onclick="comprarFundoCeu()">Fundo Céu ☁️ (Requer Caixa Sombra)</button>
+        </div>
+      </div>
+
+      <!-- PAINEL MULTIPLAYER & PREVIEW -->
+      <div class="paineis-direita">
+        <div id="painel-preview">
+          <h4>👁️ PREVIEW VIVO</h4>
+          <div id="caixa-preview-fundo" class="preview-fundo-padrão">
+            <div id="caixa-preview-item" class="caixa-padrão"></div>
+            <div id="barra-preview-item" class="barra-padrão"></div>
+          </div>
+        </div>
+
+        <div id="painel-multiplayer">
+          <h4>👥 MULTIPLAYER LOCAL</h4>
+          <button onclick="criarSala()">Criar Sala de Jogo</button>
+          <div id="codigo-gerado" class="oculto">Código da Sala: <strong id="num-sala">00000</strong></div>
+          
+          <div style="margin-top: 8px;">
+            <input type="number" id="input-codigo" placeholder="Código de 5 dígitos">
+            <button onclick="entrarSala()">Conectar</button>
+          </div>
+          <p id="status-multiplayer" style="font-size: 11px; margin: 4px 0 0 0; color: #888;"></p>
+        </div>
+      </div>
+
+    </div>
+
+    <button id="btn-recomecar" onclick="recomecarPartida()">INICIAR PARTIDA</button>
+  </div>
+</div>
+<script>
+const plataforma = document.getElementById('plataforma');
+const placar = document.getElementById('placar');
+const banco = document.getElementById('banco');
+const mensagem = document.getElementById('mensagem');
+const container = document.querySelector('.jogo-container');
+const telaLoja = document.getElementById('tela-loja');
+
+let moedasTotais = parseInt(localStorage.getItem('moedas_neon_v6')) || 0;
+let skinsCompradas = JSON.parse(localStorage.getItem('skins_neon_v6')) || ['barra-padrão', 'caixa-padrão', 'fundo-padrão'];
+let skinEquipadaBarra = localStorage.getItem('eq_bar_neon_v6') || 'padrão';
+let skinEquipadaCaixa = localStorage.getItem('eq_cax_neon_v6') || 'padrão';
+let skinEquipadaFundo = localStorage.getItem('eq_fun_neon_v6') || 'padrão';
+
+// CONFIGURAÇÕES REMAPEÁVEIS SALVAS
+let dificuldadeJogo = localStorage.getItem('dif_arcade_v6') || 'medio'; 
+let comandoEsquerda = localStorage.getItem('key_esq_v6') || 'ArrowLeft';
+let comandoDireita = localStorage.getItem('key_dir_v6') || 'ArrowRight';
+
+// Estado do motor lógico
+let modoJogo = 'padrao'; 
+let nivel = 1;
+let jogoAtivo = true;
+let caixas = [];
+let intervaloCriacao;
+let codigoSalaAtivo = null;
+
+// Vetores físicos básicos de movimento
+let platX = window.innerWidth / 2 - 80;
+let platVelBase = 14; 
+let caixaUnicaX = window.innerWidth / 2 - 20; 
+let caixaUnicaY = 0;
+let multiplicadorVelCaixa = 1.0;
+
+let chavesPressionadas = {};
+
+window.addEventListener('keydown', (e) => {
+  if(['space', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(e.key.toLowerCase())) {
+    e.preventDefault();
+  }
+  chavesPressionadas[e.key] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+  chavesPressionadas[e.key] = false;
+});
+
+window.addEventListener("touchstart", (e) => {
+  const metade = window.innerWidth / 2;
+
+  if (e.touches[0].clientX < metade) {
+    chavesPressionadas[comandoEsquerda] = true;
+  } else {
+    chavesPressionadas[comandoDireita] = true;
+  }
+});
+
+window.addEventListener("touchend", () => {
+  chavesPressionadas[comandoEsquerda] = false;
+  chavesPressionadas[comandoDireita] = false;
+});
+function injetarPainelConfig() {
+  const localMultiplayer = document.getElementById('painel-multiplayer');
+  if (!localMultiplayer) return;
+
+  const containerOpcoes = document.createElement('div');
+  containerOpcoes.style.cssText = "margin-top:12px; border-top:1px dashed #333; padding-top:10px; width:100%; display:flex; flex-direction:column; gap:6px; text-align:left; font-size:11px;";
+  containerOpcoes.innerHTML = `
+    <div style="color:#ffaa00; font-weight:bold; text-align:center; margin-bottom:4px;">⚙️ CONFIGURAÇÕES</div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span>DIFICULDADE:</span>
+      <select id="sel-dificuldade" style="background:#222; color:#fff; border:1px solid #444; font-size:10px; padding:2px; font-weight:bold;" onchange="alterarDificuldadeArcade(this.value)">
+        <option value="facil">FÁCIL</option>
+        <option value="medio">MÉDIO</option>
+        <option value="dificil">DIFÍCIL</option>
+      </select>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Tecla Esquerda:</span>
+      <button id="btn-mapear-esq" style="background:#222; border:1px solid #555; color:#00ffff; font-size:10px; font-weight:bold; padding:3px 6px; cursor:pointer;" onclick="escutarNovaTecla('esquerda')">---</button>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Tecla Direita:</span>
+      <button id="btn-mapear-dir" style="background:#222; border:1px solid #555; color:#00ffff; font-size:10px; font-weight:bold; padding:3px 6px; cursor:pointer;" onclick="escutarNovaTecla('direita')">---</button>
+    </div>
+  `;
+  localMultiplayer.appendChild(containerOpcoes);
+  
+  document.getElementById('sel-dificuldade').value = dificuldadeJogo;
+  configurarValoresTeclasVisuais();
+  computarConfiguracoesDificuldade();
+}
+
+function configurarValoresTeclasVisuais() {
+  document.getElementById('btn-mapear-esq').innerText = comandoEsquerda === ' ' ? 'Espaço' : comandoEsquerda.toUpperCase();
+  document.getElementById('btn-mapear-dir').innerText = comandoDireita === ' ' ? 'Espaço' : comandoDireita.toUpperCase();
+}
+
+function computarConfiguracoesDificuldade() {
+  if (dificuldadeJogo === 'facil') {
+    platVelBase = 18; multiplicadorVelCaixa = 0.75;
+  } else if (dificuldadeJogo === 'medio') {
+    platVelBase = 14; multiplicadorVelCaixa = 1.0;
+  } else if (dificuldadeJogo === 'dificil') {
+    platVelBase = 10; multiplicadorVelCaixa = 1.45;
+  }
+}
+
+function alterarDificuldadeArcade(valor) {
+  dificuldadeJogo = valor;
+  localStorage.setItem('dif_arcade_v6', dificuldadeJogo);
+  computarConfiguracoesDificuldade();
+}
+
+function escutarNovaTecla(lado) {
+  const botao = document.getElementById(lado === 'esquerda' ? 'btn-mapear-esq' : 'btn-mapear-dir');
+  botao.innerText = "APERTE...";
+  
+  const registrarDisparo = (e) => {
+    e.preventDefault();
+    if (lado === 'esquerda') {
+      comandoEsquerda = e.key;
+      localStorage.setItem('key_esq_v6', comandoEsquerda);
+    } else {
+      comandoDireita = e.key;
+      localStorage.setItem('key_dir_v6', comandoDireita);
+    }
+    configurarValoresTeclasVisuais();
+    window.removeEventListener('keydown', registrarDisparo);
+  };
+  window.addEventListener('keydown', registrarDisparo);
+}
+function verificarDisponibilidadeSazonal(evento) {
+  const dataAtual = new Date();
+  const mes = dataAtual.getMonth() + 1;
+  if (evento === 'pascoa') return (mes === 3 || mes === 4);
+  if (evento === 'natal') return (mes === 12);
+  if (evento === 'winter') return (mes >= 6 && mes <= 9);
+  if (evento === 'summer') return (mes === 12 || mes === 1 || mes === 2 || mes === 3);
+  return false;
+}
+
+function atualizarEstilosSkins() {
+  banco.innerText = `Moedas: ${moedasTotais} 🪙`;
+  plataforma.className = ''; 
+  plataforma.classList.add(`barra-${skinEquipadaBarra}`);
+  document.body.className = '';
+  document.body.classList.add(`fundo-${skinEquipadaFundo}`);
+  document.getElementById('modo-atual').innerText = `Modo: ${modoJogo.toUpperCase()}`;
+  atualizarTextosBotoesLoja();
+}
+
+function mostrarPreview(tipo, nomeSkin) {
+  const previewFundo = document.getElementById('caixa-preview-fundo');
+  const previewCaixa = document.getElementById('caixa-preview-item');
+  const previewBarra = document.getElementById('barra-preview-item');
+
+  if (tipo === 'fundo') {
+    previewFundo.className = `preview-fundo-${nomeSkin}`;
+  } else if (tipo === 'caixa') {
+    previewCaixa.className = `caixa-${nomeSkin}`;
+  } else if (tipo === 'barra') {
+    previewBarra.className = `barra-${nomeSkin}`;
+  }
+}
+
+function resetarVisorPreviewCompleto() {
+  document.getElementById('caixa-preview-fundo').className = `preview-fundo-${skinEquipadaFundo}`;
+  document.getElementById('caixa-preview-item').className = `caixa-${skinEquipadaCaixa}`;
+  document.getElementById('barra-preview-item').className = `barra-${skinEquipadaBarra}`;
+}
+
+function atualizarTextosBotoesLoja() {
+  const precosBarras = [0, 10, 20, 30, 40, 50, 60, 70, 80];
+  const precosCaixas = [0, 5, 10, 15, 20, 25, 30, 35, 40, 80, 65, 55, 115];
+  const precosFundos = [0, 1500, 0];
+
+  const mapeamento = [
+    { tipo: 'barra', nomes: ['padrão','neon-azul','neon-rosa','neon-roxo','ferro','ouro','madeira','laser','regua'], precos: precosBarras },
+    { tipo: 'caixa', nomes: ['padrão','neon-verde','neon-laranja','neon-fogo','cyber','ouro','gelo','sombra','rabisco','pascoa','natal','winter','summer'], precos: precosCaixas },
+    { tipo: 'fundo', nomes: ['padrão','caderno','ceu'], precos: precosFundos }
+  ];
+
+  mapeamento.forEach(cat => {
+    cat.nomes.forEach((nome, idx) => {
+      const btn = document.getElementById(`btn-${cat.tipo}-${nome}`);
+      if (!btn) return;
+      const idSkin = `${cat.tipo}-${nome}`;
+      const equipado = (cat.tipo === 'barra' && skinEquipadaBarra === nome) || 
+                       (cat.tipo === 'caixa' && skinEquipadaCaixa === nome) ||
+                       (cat.tipo === 'fundo' && skinEquipadaFundo === nome);
+
+      btn.className = '';
+      if (equipado) { 
+        btn.innerText = nome.toUpperCase() + " (Equipado)"; 
+        btn.classList.add('equipado'); 
+      } else if (skinsCompradas.includes(idSkin) || cat.precos[idx] === 0) { 
+        btn.innerText = nome.toUpperCase() + " (Equipar)"; 
+        btn.classList.add('comprado'); 
+      } else { 
+        btn.innerText = nome.toUpperCase() + " (" + cat.precos[idx] + " 🪙)"; 
+      }
+    });
+  });
+
+  const btnCeu = document.getElementById('btn-fundo-ceu');
+  if (btnCeu && !skinsCompradas.includes('fundo-ceu') && skinEquipadaFundo !== 'ceu') {
+    if (!skinsCompradas.includes('caixa-sombra')) {
+      btnCeu.innerText = "Fundo Céu ☁️ (Bloqueado - Requer Sombra)";
+      btnCeu.classList.add('bloqueado');
+    } else {
+      btnCeu.innerText = "Fundo Céu ☁️ (Liberado - Clique para Pegar)";
+    }
+  }
+}
+
+function comprarSkin(tipo, nomeSkin, custo) {
+  const identificador = `${tipo}-${nomeSkin}`;
+  if (skinsCompradas.includes(identificador) || custo === 0) { equiparSkin(tipo, nomeSkin); return; }
+  
+  if (moedasTotais >= custo) {
+    moedasTotais -= custo;
+    skinsCompradas.push(identificador);
+    localStorage.setItem('moedas_neon_v6', moedasTotais);
+    localStorage.setItem('skins_neon_v6', JSON.stringify(skinsCompradas));
+    document.getElementById('saldo-loja').innerText = moedasTotais;
+    equiparSkin(tipo, nomeSkin);
+  } else { alert("Saldo insuficiente!"); }
+}
+
+function comprarSkinLimitada(tipo, nomeSkin, custo, evento) {
+  const identificador = `${tipo}-${nomeSkin}`;
+  if (skinsCompradas.includes(identificador)) { equiparSkin(tipo, nomeSkin); return; }
+
+  if (!verificarDisponibilidadeSazonal(evento)) {
+    alert("Item Bloqueado! Esta skin só fica disponível na época do evento (" + evento.toUpperCase() + ").");
+    return;
+  }
+  comprarSkin(tipo, nomeSkin, custo);
+}
+
+function comprarFundoCeu() {
+  if (skinsCompradas.includes('fundo-ceu') || skinEquipadaFundo === 'ceu') {
+    equiparSkin('fundo', 'ceu');
+    return;
+  }
+  if (!skinsCompradas.includes('caixa-sombra')) {
+    alert("Bloqueado! Você precisa comprar e possuir a Caixa Sombra primeiro para liberar o Céu!");
+    return;
+  }
+  skinsCompradas.push('fundo-ceu');
+  localStorage.setItem('skins_neon_v6', JSON.stringify(skinsCompradas));
+  equiparSkin('fundo', 'ceu');
+}
+
+function equiparSkin(tipo, nomeSkin) {
+  if (tipo === 'barra') { skinEquipadaBarra = nomeSkin; localStorage.setItem('eq_bar_neon_v6', nomeSkin); }
+  if (tipo === 'caixa') { skinEquipadaCaixa = nomeSkin; localStorage.setItem('eq_cax_neon_v6', nomeSkin); }
+  if (tipo === 'fundo') { skinEquipadaFundo = nomeSkin; localStorage.setItem('eq_fun_neon_v6', nomeSkin); }
+  atualizarEstilosSkins();
+  resetarVisorPreviewCompleto();
+}
+
+function mudarModo(novoModo) {
+  modoJogo = novoModo;
+  document.getElementById('status-multiplayer').innerText = `Modo trocado para ${novoModo}.`;
+  atualizarEstilosSkins();
+}
+function criarSala() {
+  codigoSalaAtivo = Math.floor(10000 + Math.random() * 90000); 
+  document.getElementById('num-sala').innerText = codigoSalaAtivo;
+  document.getElementById('codigo-gerado').classList.remove('oculto');
+  document.getElementById('status-multiplayer').innerText = "Sala criada! Digite ao lado para entrar.";
+  document.getElementById('status-multiplayer').style.color = "#2ecc71";
+}
+
+function entrarSala() {
+  const input = document.getElementById('input-codigo').value;
+  if (parseInt(input) === codigoSalaAtivo && codigoSalaAtivo !== null) {
+    modoJogo = 'multiplayer';
+    document.getElementById('status-multiplayer').innerText = "CONECTADO! P1 = Barra (A/D) | P2 = Caixa (◄/►)";
+    document.getElementById('status-multiplayer').style.color = "#00ffff";
+    atualizarEstilosSkins();
+  } else {
+    alert("Código Inválido ou Sala Inexistente!");
+  }
+}
+
+function criarCaixaInfinita() {
+  if (!jogoAtivo || modoJogo !== 'padrao') return;
+  const novaCaixa = document.createElement('div');
+  novaCaixa.className = `caixa caixa-${skinEquipadaCaixa}`;
+  const posX = Math.random() * (window.innerWidth - 40);
+  novaCaixa.style.left = posX + 'px';
+  novaCaixa.style.top = '0px';
+  container.appendChild(novaCaixa);
+
+  let velCalculada = (2.5 + (nivel * 0.35)) * multiplicadorVelCaixa;
+  caixas.push({ elemento: novaCaixa, x: posX, y: 0, velocidade: velCalculada });
+}
+
+function iniciarFluxoCaixas() {
+  clearInterval(intervaloCriacao);
+  const antigo = document.getElementById('caixa-unica');
+  if (antigo) antigo.remove();
+
+  if (modoJogo === 'padrao') {
+    let tempoSpawn = Math.max(1500 - (nivel * 100), 500) / multiplicadorVelCaixa;
+    intervaloCriacao = setInterval(criarCaixaInfinita, tempoSpawn);
+  } else {
+    const el = document.createElement('div');
+    el.id = 'caixa-unica';
+    el.className = `caixa caixa-${skinEquipadaCaixa}`;
+    container.appendChild(el);
+    caixaUnicaX = window.innerWidth / 2 - 20;
+    caixaUnicaY = 0;
+  }
+}
+
+function gameOver() {
+  jogoAtivo = false;
+  clearInterval(intervaloCriacao);
+  
+  moedasTotais += nivel;
+  localStorage.setItem('moedas_neon_v6', moedasTotais);
+
+  document.getElementById('msg-loja').innerText = `Fim de Jogo! Alcançou o Nível ${nivel}. Ganhou +${nivel} moedas!`;
+  document.getElementById('saldo-loja').innerText = moedasTotais;
+  
+  caixas.forEach(c => c.elemento.remove());
+  caixas = [];
+  const elUnico = document.getElementById('caixa-unica');
+  if (elUnico) elUnico.remove();
+
+  telaLoja.classList.remove('oculto');
+  atualizarEstilosSkins();
+  resetarVisorPreviewCompleto();
+}
+
+function recomecarPartida() {
+  nivel = 1;
+  jogoAtivo = true;
+  platX = window.innerWidth / 2 - 80;
+  placar.innerText = `Nível: ${nivel}`;
+  
+  if(modoJogo === 'padrao') mensagem.innerText = "Modo Padrão: Mova usando [" + comandoEsquerda.toUpperCase() + "] e [" + comandoDireita.toUpperCase() + "]!";
+  if(modoJogo === 'caixa') mensagem.innerText = "Modo Caixa: Mova o quadrado usando [" + comandoEsquerda.toUpperCase() + "] e [" + comandoDireita.toUpperCase() + "]!";
+  if(modoJogo === 'multiplayer') mensagem.innerText = "MULTIPLAYER LOCAL ATIVO!";
+
+  telaLoja.classList.add('oculto');
+  atualizarEstilosSkins();
+  iniciarFluxoCaixas();
+  if(modoJogo === 'padrao') criarCaixaInfinita();
+  atualizarJogo();
+}
+
+function atualizarJogo() {
+  if (!jogoAtivo) return;
+
+  const rectPlat = plataforma.getBoundingClientRect();
+
+  if (modoJogo === 'padrao') {
+    if (chavesPressionadas[comandoEsquerda]) platX -= platVelBase;
+    if (chavesPressionadas[comandoDireita]) platX += platVelBase;
+    if (platX < 0) platX = 0;
+    if (platX > window.innerWidth - 160) platX = window.innerWidth - 160;
+    plataforma.style.left = platX + 'px';
+    plataforma.style.transform = 'none';
+
+    for (let i = caixas.length - 1; i >= 0; i--) {
+      let c = caixas[i];
+      c.y += c.velocidade;
+      c.elemento.style.top = c.y + 'px';
+      const rectC = c.elemento.getBoundingClientRect();
+
+      if (rectC.bottom >= rectPlat.top && rectC.top <= rectPlat.bottom && rectC.right >= rectPlat.left && rectC.left <= rectPlat.right) {
+        c.elemento.remove(); caixas.splice(i, 1); nivel++;
+        placar.innerText = 'Nível: ' + nivel; iniciarFluxoCaixas(); continue;
+      }
+      if (rectC.bottom >= window.innerHeight - 15) { gameOver(); return; }
+    }
+  }
+
+  else if (modoJogo === 'caixa') {
+    platX += Math.sin(Date.now() / 250) * (9 * multiplicadorVelCaixa); 
+    if (platX < 0) platX = 0; if (platX > window.innerWidth - 160) platX = window.innerWidth - 160;
+    plataforma.style.left = platX + 'px'; plataforma.style.transform = 'none';
+
+    if (chavesPressionadas[comandoEsquerda]) caixaUnicaX -= 10;
+    if (chavesPressionadas[comandoDireita]) caixaUnicaX += 10;
+    if (caixaUnicaX < 0) caixaUnicaX = 0;
+    if (caixaUnicaX > window.innerWidth - 40) caixaUnicaX = window.innerWidth - 40;
+    
+    caixaUnicaY += (3.5 + (nivel * 0.3)) * multiplicadorVelCaixa;
+
+    const el = document.getElementById('caixa-unica');
+    if (el) { el.style.left = caixaUnicaX + 'px'; el.style.top = caixaUnicaY + 'px'; }
+
+    const rectC = el.getBoundingClientRect();
+    if (rectC.bottom >= rectPlat.top && rectC.top <= rectPlat.bottom && rectC.right >= rectPlat.left && rectC.left <= rectPlat.right) {
+      nivel++; placar.innerText = 'Nível: ' + nivel; caixaUnicaY = 0; caixaUnicaX = Math.random() * (window.innerWidth - 40);
+    }
+    if (rectC.bottom >= window.innerHeight - 15) { gameOver(); return; }
+  }
+
+  else if (modoJogo === 'multiplayer') {
+    if (chavesPressionadas['a'] || chavesPressionadas['A']) platX -= 14;
+    if (chavesPressionadas['d'] || chavesPressionadas['D']) platX += 14;
+    if (platX < 0) platX = 0; if (platX > window.innerWidth - 160) platX = window.innerWidth - 160;
+    plataforma.style.left = platX + 'px'; plataforma.style.transform = 'none';
+
+    if (chavesPressionadas['ArrowLeft']) caixaUnicaX -= 9;
+    if (chavesPressionadas['ArrowRight']) caixaUnicaX += 9;
+    if (caixaUnicaX < 0) caixaUnicaX = 0; if (caixaUnicaX > window.innerWidth - 40) caixaUnicaX = window.innerWidth - 40;
+    
+    caixaUnicaY += 4.0;
+
+    const el = document.getElementById('caixa-unica');
+    if (el) { el.style.left = caixaUnicaX + 'px'; el.style.top = caixaUnicaY + 'px'; }
+
+    const rectC = el.getBoundingClientRect();
+    if (rectC.bottom >= rectPlat.top && rectC.top <= rectPlat.bottom && rectC.right >= rectPlat.left && rectC.left <= rectPlat.right) {
+      nivel++; placar.innerText = 'Coop Nível: ' + nivel; caixaUnicaY = 0; caixaUnicaX = Math.random() * (window.innerWidth - 40);
+    }
+    if (rectC.bottom >= window.innerHeight - 15) { gameOver(); return; }
+  }
+
+  requestAnimationFrame(atualizarJogo);
+}
+
+atualizarEstilosSkins();
+iniciarFluxoCaixas();
+criarCaixaInfinita();
+injetarPainelConfig();
+atualizarJogo();</script></body></html>
